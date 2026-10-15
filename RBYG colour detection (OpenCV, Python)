@@ -131,7 +131,7 @@ while True:
 
     
     # Display the resulting frame
-    cv2.imshow("Real-Time Red & Blue Color Detection", frame)
+    cv2.imshow("Real-Time Red, Blue, Yellow & Green Detection", frame)
 
     # Break the loop if the user presses the 'q' key
     if cv2.waitKey(1) & 0xFF == ord('q'):
