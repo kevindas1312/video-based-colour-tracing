@@ -1,0 +1,142 @@
+"""
+Real-Time Red, Blue, Yellow, Green Colour Detection using OpenCV and Python.
+Author: Kevin Raoul Das
+Description: Captures a live webcam feed, converts it to the HSV color space, 
+applies morphological noise reduction, and highlights red/blue objects 
+with bounding boxes and area-based labels.
+"""
+
+#NOTE : Program only ends when 'q' is pressed
+
+import cv2 #cv2 library is used to access the webcam
+import numpy as np #to handle the matrices operation representing pixels and colour values
+
+cap = cv2.VideoCapture(0) # Initialize the webcam (0 is usually the built-in laptop webcam)
+
+# Check if the webcam is opened correctly
+if not cap.isOpened():
+    print("Error: Could not open video stream.") #display message
+    exit(0) #end program
+
+while True:
+    # Capture frame-by-frame
+    ret, frame = cap.read()
+    if not ret:
+        print("Error: Failed to grab frame.")
+        break
+
+    # Flip the frame horizontally for a natural mirror view
+    frame = cv2.flip(frame, 1)
+
+    # Convert BGR to HSV color space 
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #HSV is much better for color tracking because it separates the actual color shade (Hue) from lighting/shadows (Saturation and Value).
+
+    # Define colour ranges
+    # Note: Red wraps around the 0-180 Hue boundary in OpenCV, so it uses two ranges.
+    
+    # Red Range 1
+    lower_red1 = np.array([0, 120, 70])
+    upper_red1 = np.array([10, 255, 255])
+    # Red Range 2
+    lower_red2 = np.array([170, 120, 70])
+    upper_red2 = np.array([180, 255, 255])
+
+    # Blue Range -> covers deep blue down to light cyan/pastel blue
+    lower_blue = np.array([85, 50, 50])
+    upper_blue = np.array([135, 255, 255])
+
+    # Yellow Range
+    lower_yellow = np.array([15, 50, 50])
+    upper_yellow = np.array([35, 255, 255])
+
+    # Green Range
+    lower_green = np.array([35, 80, 80])
+    upper_green = np.array([85, 255, 255])
+
+    #Creating masks
+    mask_red1 = cv2.inRange(hsv, lower_red1, upper_red1)
+    mask_red2 = cv2.inRange(hsv, lower_red2, upper_red2)
+    mask_red = mask_red1 | mask_red2  # Combine both red ranges
+
+    mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
+
+    # Clean up noise (Morphological Operations)
+    #.morphologyEx() function cleans up visual static or random noise pixels from the mask using a mathematical kernel
+    kernel = np.ones((5, 5), np.uint8)
+    mask_red = cv2.morphologyEx(mask_red, cv2.MORPH_OPEN, kernel)
+    mask_red = cv2.morphologyEx(mask_red, cv2.MORPH_CLOSE, kernel)
+
+    mask_blue = cv2.morphologyEx(mask_blue, cv2.MORPH_OPEN, kernel)
+    mask_blue = cv2.morphologyEx(mask_blue, cv2.MORPH_CLOSE, kernel) 
+
+    # Creating masks
+    mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    mask_green = cv2.inRange(hsv, lower_green, upper_green)
+
+    # Clean up noise for yellow and green
+    mask_yellow = cv2.morphologyEx(mask_yellow, cv2.MORPH_OPEN, kernel)
+    mask_yellow = cv2.morphologyEx(mask_yellow, cv2.MORPH_CLOSE, kernel)
+
+    mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
+    mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel)
+    #Find contours and draw bounding boxes
+    
+    # Process Red Objects
+    contours_red, _ = cv2.findContours(mask_red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours_red:
+        area = cv2.contourArea(cnt)
+        if area > 500:  # Filter out small noise areas
+            x, y, w, h = cv2.boundingRect(cnt)
+            # Draw bounding box (Red in BGR: (0, 0, 255))
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            
+            # Label and Confidence (using area size and simple text)
+            label = f"Red (Area: {int(area)})"
+            cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+    # Process Blue Objects
+    contours_blue, _ = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours_blue:
+        area = cv2.contourArea(cnt)
+        if area > 500:  # Filter out small noise areas
+            x, y, w, h = cv2.boundingRect(cnt)
+            # Draw bounding box (Blue in BGR: (255, 0, 0))
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            
+            # Label and Confidence
+            label = f"Blue (Area: {int(area)})"
+            cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+
+    # Process Yellow Objects
+    contours_yellow, _ = cv2.findContours(mask_yellow, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours_yellow:
+        area = cv2.contourArea(cnt)
+        if area > 500:
+            x, y, w, h = cv2.boundingRect(cnt)
+            # Yellow bounding box: (0, 255, 255)
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
+            label = f"Yellow (Area: {int(area)})"
+            cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+
+    # Process Green Objects
+    contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours_green:
+        area = cv2.contourArea(cnt)
+        if area > 500:
+            x, y, w, h = cv2.boundingRect(cnt)
+            # Green bounding box: (0, 255, 0)
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            label = f"Green (Area: {int(area)})"
+            cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+    
+    # Display the resulting frame
+    cv2.imshow("Real-Time Red & Blue Color Detection", frame)
+
+    # Break the loop if the user presses the 'q' key
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Release the capture and close all windows
+cap.release()
+cv2.destroyAllWindows()
