@@ -22,7 +22,7 @@ Make sure you have [Python](https://www.python.org/) installed on your system.
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/kevindas1312/video-based-colour-tracing.git](https://github.com/kevindas1312/video-based-colour-tracing.git)
+   git clone https://github.com/kevindas1312/video-based-colour-tracing.git
    cd video-based-colour-tracing
 2. **Install the dependencies**
    You will need opencv-python for handling webcam video streams and numpy for matrix/array operations. Run the following command in your terminal:
